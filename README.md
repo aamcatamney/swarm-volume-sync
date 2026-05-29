@@ -172,3 +172,20 @@ dotnet test           # run the Core unit tests
 
 `SwarmVolumeSync.Core` holds the decision logic and is exercised entirely by unit
 tests; the agent project wires that logic to Docker, rsync, and HTTP.
+
+### Run a single agent locally
+
+For smoke-testing the agent and control API without a swarm, use the root
+`docker-compose.yml` (single node, no peers — nothing replicates across nodes,
+but the agent runs and serves the API):
+
+```sh
+mkdir -p deploy/secrets
+ssh-keygen -t ed25519 -N "" -f deploy/secrets/svs_ssh_key
+mv deploy/secrets/svs_ssh_key.pub deploy/secrets/svs_ssh_pubkey
+docker compose up --build
+# then: curl localhost:8080/status
+```
+
+Production deployment is always the Swarm stack (`deploy/stack.yml`), not Compose
+— global mode and overlay peer discovery require Swarm.
