@@ -39,6 +39,22 @@ public class RsyncPlanTests
     }
 
     [Fact]
+    public void A_bandwidth_limit_is_passed_to_rsync_when_set()
+    {
+        var args = RsyncPlan.PullArgs("appdata", "10.0.0.2", Opts with { BandwidthLimitKb = 2048 });
+
+        Assert.Contains("--bwlimit=2048", args);
+    }
+
+    [Fact]
+    public void No_bandwidth_limit_argument_when_unset()
+    {
+        var args = RsyncPlan.PushArgs("appdata", "10.0.0.3", Opts);
+
+        Assert.DoesNotContain(args, a => a.StartsWith("--bwlimit"));
+    }
+
+    [Fact]
     public void Pull_args_archive_peer_data_into_the_local_volume_over_ssh()
     {
         var args = RsyncPlan.PullArgs("appdata", "10.0.0.2", Opts with { MirrorDelete = true });

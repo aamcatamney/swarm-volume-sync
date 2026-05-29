@@ -62,5 +62,14 @@ source detection, `tasks.` peer discovery, and rsync-over-SSH transport.
 - Versioning (#3) and the pull-before-serve guard (#5) are in place: a node
   scheduled onto an empty volume hydrates from the highest-versioned peer before
   it may push, and `rsync --delete` is only used by a confirmed source that has
-  won the version check (ADR-0003). Backfill of freshly-joined nodes (#8) and
-  the change-driven trigger (#4) may still be pending depending on your build.
+  won the version check (ADR-0003). Change-driven sync (#4), observability (#6),
+  retention-based reclaim + split-brain handling (#7), and backfill of
+  freshly-joined nodes (#8) are all implemented.
+
+## Observability
+
+- `GET :8080/status` — per-volume source, version, holders, sync lag, coverage.
+- `GET :8080/metrics` — Prometheus (`svs_volume_coverage`, `svs_sync_lag_seconds`,
+  `svs_last_sync_timestamp`).
+- WARN logs name any **under-replicated** volume (coverage < 100%) — your
+  failover-risk early warning. Watch these before relying on HA.

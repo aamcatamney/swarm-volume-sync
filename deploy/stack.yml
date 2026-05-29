@@ -26,6 +26,9 @@ services:
       SVS_SAFETY_POLL_SECONDS: "300"
       # reclaim an orphaned copy only after this many days with no source in the mesh
       SVS_RETENTION_DAYS: "7"
+      # backfill: 0 = unlimited bandwidth; cap concurrent volume pulls on a joining node
+      SVS_BACKFILL_BWLIMIT_KB: "0"
+      SVS_BACKFILL_CONCURRENCY: "2"
     volumes:
       # Read own node's volumes + container mounts (am-I-source) and node identity.
       - /var/run/docker.sock:/var/run/docker.sock:ro

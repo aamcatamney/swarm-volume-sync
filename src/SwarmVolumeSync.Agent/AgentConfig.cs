@@ -18,7 +18,9 @@ public sealed record AgentConfig(
     int ControlApiPort,
     TimeSpan DebounceInterval,
     TimeSpan SafetyPollInterval,
-    TimeSpan RetentionWindow)
+    TimeSpan RetentionWindow,
+    int? BackfillBandwidthLimitKb,
+    int BackfillConcurrency)
 {
     public static AgentConfig FromEnvironment()
     {
@@ -47,7 +49,11 @@ public sealed record AgentConfig(
             SafetyPollInterval: TimeSpan.FromSeconds(
                 int.TryParse(Get("SVS_SAFETY_POLL_SECONDS", "300"), out var sp) ? sp : 300),
             RetentionWindow: TimeSpan.FromDays(
-                int.TryParse(Get("SVS_RETENTION_DAYS", "7"), out var rd) ? rd : 7));
+                int.TryParse(Get("SVS_RETENTION_DAYS", "7"), out var rd) ? rd : 7),
+            BackfillBandwidthLimitKb:
+                int.TryParse(Get("SVS_BACKFILL_BWLIMIT_KB", "0"), out var bw) && bw > 0 ? bw : null,
+            BackfillConcurrency:
+                int.TryParse(Get("SVS_BACKFILL_CONCURRENCY", "2"), out var bc) && bc > 0 ? bc : 2);
     }
 
     public string TasksDnsName => $"tasks.{ServiceName}";

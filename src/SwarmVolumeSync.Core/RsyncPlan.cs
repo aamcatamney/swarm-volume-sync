@@ -4,7 +4,7 @@ namespace SwarmVolumeSync.Core;
 /// Transport options for an rsync-over-SSH push. The SSH key is delivered to
 /// every agent as a swarm secret (see CONTEXT.md, Agent).
 /// </summary>
-public sealed record RsyncOptions(string SshKeyPath, bool MirrorDelete = false);
+public sealed record RsyncOptions(string SshKeyPath, bool MirrorDelete = false, int? BandwidthLimitKb = null);
 
 /// <summary>
 /// Builds the <c>rsync</c> argument vector for pushing a volume's data to a peer.
@@ -39,6 +39,9 @@ public static class RsyncPlan
 
         if (options.MirrorDelete)
             args.Add("--delete");
+
+        if (options.BandwidthLimitKb is { } limit)
+            args.Add($"--bwlimit={limit}");
 
         args.Add("-e");
         args.Add($"ssh -i {options.SshKeyPath} -o StrictHostKeyChecking=no");

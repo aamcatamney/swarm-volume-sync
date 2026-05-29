@@ -102,8 +102,64 @@ public sealed class SyncWorker(
         sourceRegistry.Publish(sourcedNow);
 
         await ReclaimOrphansAsync(sourcedNow, peers, ct);
+        await BackfillAsync(peers, ct);
         await CheckSplitBrainAsync(sourcedNow, peers, ct);
         await WarnOnUnderReplicationAsync(ct);
+    }
+
+    /// <summary>
+    /// Catch this node up to full coverage: pull every volume it is missing or
+    /// behind on from the highest-versioned holder. Bandwidth-limited and
+    /// concurrency-capped so a joining node neither saturates the network nor
+    /// starves the live syncs that ran earlier this cycle (CONTEXT.md, Backfill).
+    /// </summary>
+    private async Task BackfillAsync(IReadOnlyList<string> peers, CancellationToken ct)
+    {
+        if (peers.Count == 0) return;
+
+        var local = store.All().ToDictionary(m => m.VolumeName, m => m.Version);
+
+        // Build the mesh view: which peers hold which volume at which version.
+        var holders = new Dictionary<string, List<(string, VolumeVersion)>>();
+        foreach (var peer in peers)
+        {
+            foreach (var meta in await peerClient.GetVolumesAsync(peer, ct))
+            {
+                if (!holders.TryGetValue(meta.VolumeName, out var list))
+                    holders[meta.VolumeName] = list = [];
+                list.Add((peer, meta.Version));
+            }
+        }
+
+        var mesh = holders.Select(kv => new MeshVolume(kv.Key, kv.Value)).ToList();
+        var ops = BackfillPlanner.Plan(local, mesh);
+        if (ops.Count == 0) return;
+
+        logger.LogInformation("backfilling {Count} volume(s) to reach full coverage", ops.Count);
+
+        var options = new RsyncOptions(
+            config.SshKeyPath, MirrorDelete: true, BandwidthLimitKb: config.BackfillBandwidthLimitKb);
+        using var gate = new SemaphoreSlim(config.BackfillConcurrency);
+
+        var tasks = ops.Select(async op =>
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                var pullArgs = RsyncPlan.PullArgs(op.Volume, op.FromPeer, options);
+                if (await rsync.RunAsync($"backfill {op.Volume} from {op.FromPeer}", pullArgs, ct))
+                {
+                    var adopted = await peerClient.GetMetadataAsync(op.FromPeer, op.Volume, ct);
+                    if (adopted is not null) store.Save(adopted);
+                }
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task ReclaimOrphansAsync(HashSet<string> selfSourced, IReadOnlyList<string> peers, CancellationToken ct)

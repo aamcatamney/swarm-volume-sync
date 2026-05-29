@@ -45,6 +45,20 @@ public sealed class PeerMetadataClient(HttpClient http, int controlApiPort)
         }
     }
 
+    public async Task<IReadOnlyList<VolumeMetadata>> GetVolumesAsync(string peer, CancellationToken ct)
+    {
+        try
+        {
+            var resp = await http.GetAsync(new Uri(Base(peer), "/volumes"), ct);
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<List<VolumeMetadata>>(ct) ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+    }
+
     public async Task<IReadOnlyList<string>> GetSourcesAsync(string peer, CancellationToken ct)
     {
         try
