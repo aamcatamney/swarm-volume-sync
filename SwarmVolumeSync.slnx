@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SwarmVolumeSync.Agent/SwarmVolumeSync.Agent.csproj" />
+    <Project Path="src/SwarmVolumeSync.Core/SwarmVolumeSync.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SwarmVolumeSync.Core.Tests/SwarmVolumeSync.Core.Tests.csproj" />
+  </Folder>
+</Solution>

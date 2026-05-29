@@ -1,0 +1,39 @@
+# Deploy with:  docker stack deploy -c deploy/stack.yml svs
+# (stack name "svs" => service "svs_agent" => overlay DNS "tasks.svs_agent")
+version: "3.8"
+
+services:
+  agent:
+    image: swarm-volume-sync:latest
+    # Global => exactly one agent task per node, which is what full-mesh needs.
+    deploy:
+      mode: global
+      restart_policy:
+        condition: any
+    environment:
+      # Must equal "<stack>_<service>" so tasks.<name> resolves the full mesh.
+      SVS_SERVICE_NAME: svs_agent
+      SVS_ENABLE_LABEL: swarm-volume-sync.enable
+      SVS_SSH_KEY_PATH: /root/.ssh/id_svs
+      SVS_POLL_INTERVAL_SECONDS: "30"
+    volumes:
+      # Read own node's volumes + container mounts (am-I-source) and node identity.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Read/write the actual volume data for rsync, on every node.
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    secrets:
+      - svs_ssh_key
+      - svs_ssh_pubkey
+    networks:
+      - svs
+
+networks:
+  svs:
+    driver: overlay
+    attachable: false
+
+secrets:
+  svs_ssh_key:
+    external: true
+  svs_ssh_pubkey:
+    external: true
