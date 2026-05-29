@@ -15,6 +15,7 @@ public sealed class SyncWorker(
     PeerDiscovery discovery,
     RsyncRunner rsync,
     PeerMetadataClient peerClient,
+    MeshStatusService statusService,
     ILogger<SyncWorker> logger)
     : BackgroundService
 {
@@ -97,6 +98,20 @@ public sealed class SyncWorker(
         }
 
         _sourcedLastCycle = sourcedNow;
+
+        await WarnOnUnderReplicationAsync(ct);
+    }
+
+    private async Task WarnOnUnderReplicationAsync(CancellationToken ct)
+    {
+        foreach (var status in await statusService.BuildAsync(ct))
+        {
+            if (status.IsUnderReplicated)
+                logger.LogWarning(
+                    "under-replicated: '{Volume}' v{Version} on {Holders}/{Total} nodes (coverage {Coverage:P0}); " +
+                    "failover onto a node without a copy may fail",
+                    status.Volume, status.Version, status.Holders, status.TotalNodes, status.Coverage);
+        }
     }
 
     /// <summary>

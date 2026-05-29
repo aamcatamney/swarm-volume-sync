@@ -14,6 +14,7 @@ builder.Services.AddHttpClient<PeerMetadataClient>();
 builder.Services.AddSingleton(sp => new PeerMetadataClient(
     sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(PeerMetadataClient)),
     config.ControlApiPort));
+builder.Services.AddSingleton<MeshStatusService>();
 builder.Services.AddHostedService<SyncWorker>();
 
 var app = builder.Build();
@@ -21,6 +22,12 @@ var app = builder.Build();
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/volumes", (IVolumeMetadataStore store) => Results.Ok(store.All()));
+
+app.MapGet("/status", async (MeshStatusService status, CancellationToken ct) =>
+    Results.Ok(await status.BuildAsync(ct)));
+
+app.MapGet("/metrics", async (MeshStatusService status, CancellationToken ct) =>
+    Results.Text(PrometheusFormatter.Format(await status.BuildAsync(ct)), "text/plain; version=0.0.4"));
 
 app.MapGet("/volumes/{name}/version", (string name, IVolumeMetadataStore store) =>
 {
