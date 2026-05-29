@@ -17,6 +17,37 @@ stateful services backed by `local` volumes.
 > and journaled app state — but **not safe for databases**. Replicate database
 > volumes with the database's own HA, not this service.
 
+## Quick start
+
+Using the prebuilt image from GitHub Container Registry — no local build needed.
+Run on a swarm manager node:
+
+```sh
+# 0. Have a swarm (skip if already initialised)
+docker swarm init
+
+# 1. Create the shared SSH keypair as swarm secrets
+ssh-keygen -t ed25519 -N "" -f svs_key
+docker secret create svs_ssh_key    svs_key
+docker secret create svs_ssh_pubkey svs_key.pub
+rm svs_key svs_key.pub
+
+# 2. Deploy the global service (pulls ghcr.io/aamcatamney/swarm-volume-sync:latest)
+curl -O https://raw.githubusercontent.com/aamcatamney/swarm-volume-sync/main/deploy/stack.yml
+docker stack deploy -c stack.yml svs
+
+# 3. Opt a volume in to replication
+docker volume create --label swarm-volume-sync.enable=true appdata
+
+# 4. Check coverage from any node
+curl localhost:8080/status
+```
+
+> The GHCR package must be pullable by every node. If it is private, run
+> `docker login ghcr.io` on each node, or make the package public (repo →
+> Packages → package settings → visibility). For a full multi-node walkthrough
+> and the end-to-end verification steps, see [`deploy/README.md`](deploy/README.md).
+
 ## What it does
 
 - Runs one agent per node (a Swarm **global service**).

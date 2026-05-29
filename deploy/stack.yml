@@ -4,7 +4,8 @@ version: "3.8"
 
 services:
   agent:
-    image: swarm-volume-sync:latest
+    # Published by CI; override with your own build/registry if you prefer.
+    image: ghcr.io/aamcatamney/swarm-volume-sync:latest
     # Global => exactly one agent task per node, which is what full-mesh needs.
     deploy:
       mode: global
