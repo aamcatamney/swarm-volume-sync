@@ -15,6 +15,7 @@ builder.Services.AddSingleton(sp => new PeerMetadataClient(
     sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(PeerMetadataClient)),
     config.ControlApiPort));
 builder.Services.AddSingleton<MeshStatusService>();
+builder.Services.AddSingleton<SourceRegistry>();
 builder.Services.AddHostedService<SyncWorker>();
 
 var app = builder.Build();
@@ -22,6 +23,9 @@ var app = builder.Build();
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/volumes", (IVolumeMetadataStore store) => Results.Ok(store.All()));
+
+// Volumes this node currently sources, so peers can decide reclaim eligibility.
+app.MapGet("/sources", (SourceRegistry sources) => Results.Ok(sources.Current));
 
 app.MapGet("/status", async (MeshStatusService status, CancellationToken ct) =>
     Results.Ok(await status.BuildAsync(ct)));

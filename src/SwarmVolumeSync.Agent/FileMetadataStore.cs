@@ -43,6 +43,15 @@ public sealed class FileMetadataStore : IVolumeMetadataStore
         }
     }
 
+    public void Delete(string volumeName)
+    {
+        var path = PathFor(volumeName);
+        lock (_gate)
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
     public IReadOnlyList<VolumeMetadata> All()
     {
         lock (_gate)

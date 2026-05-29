@@ -11,5 +11,7 @@ public interface IVolumeMetadataStore
 
     void Save(VolumeMetadata metadata);
 
+    void Delete(string volumeName);
+
     IReadOnlyList<VolumeMetadata> All();
 }

@@ -17,7 +17,8 @@ public sealed record AgentConfig(
     string VolumesRoot,
     int ControlApiPort,
     TimeSpan DebounceInterval,
-    TimeSpan SafetyPollInterval)
+    TimeSpan SafetyPollInterval,
+    TimeSpan RetentionWindow)
 {
     public static AgentConfig FromEnvironment()
     {
@@ -44,7 +45,9 @@ public sealed record AgentConfig(
             DebounceInterval: TimeSpan.FromSeconds(
                 int.TryParse(Get("SVS_DEBOUNCE_SECONDS", "5"), out var d) ? d : 5),
             SafetyPollInterval: TimeSpan.FromSeconds(
-                int.TryParse(Get("SVS_SAFETY_POLL_SECONDS", "300"), out var sp) ? sp : 300));
+                int.TryParse(Get("SVS_SAFETY_POLL_SECONDS", "300"), out var sp) ? sp : 300),
+            RetentionWindow: TimeSpan.FromDays(
+                int.TryParse(Get("SVS_RETENTION_DAYS", "7"), out var rd) ? rd : 7));
     }
 
     public string TasksDnsName => $"tasks.{ServiceName}";

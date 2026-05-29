@@ -13,7 +13,8 @@ public sealed record VolumeMetadata(
     VolumeVersion Version,
     string Checksum,
     DateTimeOffset LastSyncedAt,
-    string SourceNode);
+    string SourceNode,
+    DateTimeOffset? OrphanedAt = null);
 
 public static class VolumeMetadataSerializer
 {

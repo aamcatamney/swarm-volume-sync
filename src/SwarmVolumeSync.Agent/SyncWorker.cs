@@ -16,6 +16,7 @@ public sealed class SyncWorker(
     RsyncRunner rsync,
     PeerMetadataClient peerClient,
     MeshStatusService statusService,
+    SourceRegistry sourceRegistry,
     ILogger<SyncWorker> logger)
     : BackgroundService
 {
@@ -98,8 +99,80 @@ public sealed class SyncWorker(
         }
 
         _sourcedLastCycle = sourcedNow;
+        sourceRegistry.Publish(sourcedNow);
 
+        await ReclaimOrphansAsync(sourcedNow, peers, ct);
+        await CheckSplitBrainAsync(sourcedNow, peers, ct);
         await WarnOnUnderReplicationAsync(ct);
+    }
+
+    private async Task ReclaimOrphansAsync(HashSet<string> selfSourced, IReadOnlyList<string> peers, CancellationToken ct)
+    {
+        var sourcedSomewhere = new HashSet<string>(selfSourced);
+        foreach (var peer in peers)
+            sourcedSomewhere.UnionWith(await peerClient.GetSourcesAsync(peer, ct));
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var meta in store.All())
+        {
+            var decision = RetentionPolicy.Evaluate(
+                meta, sourcedSomewhere.Contains(meta.VolumeName), now, config.RetentionWindow);
+
+            switch (decision.Action)
+            {
+                case ReclaimAction.Active:
+                    if (meta.OrphanedAt is not null) store.Save(decision.UpdatedMetadata!);
+                    break;
+                case ReclaimAction.MarkOrphaned:
+                    logger.LogInformation(
+                        "orphaned '{Volume}' (sourced nowhere in mesh); reclaim in {Days}d unless a source returns",
+                        meta.VolumeName, config.RetentionWindow.TotalDays);
+                    store.Save(decision.UpdatedMetadata!);
+                    break;
+                case ReclaimAction.Reclaim:
+                    logger.LogWarning("reclaiming '{Volume}': retention window elapsed with no source", meta.VolumeName);
+                    ReclaimVolumeData(meta.VolumeName);
+                    store.Delete(meta.VolumeName);
+                    break;
+                case ReclaimAction.Wait:
+                default:
+                    break;
+            }
+        }
+    }
+
+    private void ReclaimVolumeData(string volume)
+    {
+        var dataPath = RsyncPlan.DataPath(volume).TrimEnd('/');
+        if (!Directory.Exists(dataPath)) return;
+        foreach (var entry in Directory.EnumerateFileSystemEntries(dataPath))
+        {
+            if (File.Exists(entry)) File.Delete(entry);
+            else Directory.Delete(entry, recursive: true);
+        }
+    }
+
+    private async Task CheckSplitBrainAsync(HashSet<string> selfSourced, IReadOnlyList<string> peers, CancellationToken ct)
+    {
+        foreach (var volume in selfSourced)
+        {
+            var local = store.TryGet(volume);
+            if (local is null) continue;
+
+            foreach (var peer in peers)
+            {
+                var peerMeta = await peerClient.GetMetadataAsync(peer, volume, ct);
+                if (peerMeta is not null &&
+                    SplitBrain.IsConflict(local.Version, local.Checksum, peerMeta.Version, peerMeta.Checksum))
+                {
+                    logger.LogWarning(
+                        "split-brain on '{Volume}': local v{LocalV}/{LocalCk} vs {Peer} v{PeerV}/{PeerCk}; " +
+                        "higher version wins on heal",
+                        volume, local.Version.Generation, local.Checksum[..Math.Min(8, local.Checksum.Length)],
+                        peer, peerMeta.Version.Generation, peerMeta.Checksum[..Math.Min(8, peerMeta.Checksum.Length)]);
+                }
+            }
+        }
     }
 
     private async Task WarnOnUnderReplicationAsync(CancellationToken ct)
