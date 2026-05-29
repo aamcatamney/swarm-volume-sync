@@ -14,8 +14,10 @@ public sealed record AgentConfig(
     string EnableLabelKey,
     string IgnoreLabelKey,
     string MetadataDirectory,
+    string VolumesRoot,
     int ControlApiPort,
-    TimeSpan PollInterval)
+    TimeSpan DebounceInterval,
+    TimeSpan SafetyPollInterval)
 {
     public static AgentConfig FromEnvironment()
     {
@@ -37,9 +39,12 @@ public sealed record AgentConfig(
             EnableLabelKey: Get("SVS_ENABLE_LABEL", "swarm-volume-sync.enable"),
             IgnoreLabelKey: Get("SVS_IGNORE_LABEL", "swarm-volume-sync.ignore"),
             MetadataDirectory: Get("SVS_METADATA_DIR", "/var/lib/swarm-volume-sync"),
+            VolumesRoot: Get("SVS_VOLUMES_ROOT", "/var/lib/docker/volumes"),
             ControlApiPort: int.TryParse(Get("SVS_CONTROL_API_PORT", "8080"), out var p) ? p : 8080,
-            PollInterval: TimeSpan.FromSeconds(
-                int.TryParse(Get("SVS_POLL_INTERVAL_SECONDS", "30"), out var s) ? s : 30));
+            DebounceInterval: TimeSpan.FromSeconds(
+                int.TryParse(Get("SVS_DEBOUNCE_SECONDS", "5"), out var d) ? d : 5),
+            SafetyPollInterval: TimeSpan.FromSeconds(
+                int.TryParse(Get("SVS_SAFETY_POLL_SECONDS", "300"), out var sp) ? sp : 300));
     }
 
     public string TasksDnsName => $"tasks.{ServiceName}";

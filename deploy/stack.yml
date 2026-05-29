@@ -19,8 +19,11 @@ services:
       SVS_IGNORE_LABEL: swarm-volume-sync.ignore
       SVS_SSH_KEY_PATH: /root/.ssh/id_svs
       SVS_METADATA_DIR: /var/lib/swarm-volume-sync
+      SVS_VOLUMES_ROOT: /var/lib/docker/volumes
       SVS_CONTROL_API_PORT: "8080"
-      SVS_POLL_INTERVAL_SECONDS: "30"
+      # change-driven: coalesce a burst of writes, then sync; safety-net catches missed events
+      SVS_DEBOUNCE_SECONDS: "5"
+      SVS_SAFETY_POLL_SECONDS: "300"
     volumes:
       # Read own node's volumes + container mounts (am-I-source) and node identity.
       - /var/run/docker.sock:/var/run/docker.sock:ro

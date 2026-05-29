@@ -21,24 +21,50 @@ public sealed class SyncWorker(
     private readonly VolumeSelector _selector =
         VolumeSelector.For(config.SelectionMode, config.EnableLabelKey, config.IgnoreLabelKey);
 
+    private readonly DebounceWindow _debounce = new(config.DebounceInterval);
+    private volatile bool _pendingChanges;
+
     // Volumes this node sourced in the previous cycle, to detect promotion to source.
     private HashSet<string> _sourcedLastCycle = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation(
-            "agent started: service={Service} mode={Mode} enableLabel={Enable} poll={Poll}s",
-            config.ServiceName, config.SelectionMode, config.EnableLabelKey, config.PollInterval.TotalSeconds);
+            "agent started: service={Service} mode={Mode} enableLabel={Enable} debounce={Debounce}s safetyPoll={Safety}s",
+            config.ServiceName, config.SelectionMode, config.EnableLabelKey,
+            config.DebounceInterval.TotalSeconds, config.SafetyPollInterval.TotalSeconds);
+
+        using var watcher = new VolumeChangeWatcher(config.VolumesRoot, logger);
+        watcher.VolumeChanged += OnVolumeChanged;
+        watcher.Start();
+
+        var lastFullSync = DateTimeOffset.UtcNow;
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            try { await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken); }
+            catch (OperationCanceledException) { break; }
+
+            var now = DateTimeOffset.UtcNow;
+            var debounced = _pendingChanges && _debounce.HasSettled(now);
+            var safetyDue = now - lastFullSync >= config.SafetyPollInterval;
+            if (!debounced && !safetyDue)
+                continue;
+
+            _pendingChanges = false;
+            _debounce.Reset();
+            lastFullSync = now;
+
             try { await RunCycleAsync(stoppingToken); }
             catch (OperationCanceledException) { break; }
             catch (Exception ex) { logger.LogError(ex, "sync cycle error"); }
-
-            try { await Task.Delay(config.PollInterval, stoppingToken); }
-            catch (OperationCanceledException) { break; }
         }
+    }
+
+    private void OnVolumeChanged(string volume)
+    {
+        _pendingChanges = true;
+        _debounce.RecordActivity(DateTimeOffset.UtcNow);
     }
 
     private async Task RunCycleAsync(CancellationToken ct)
