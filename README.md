@@ -90,17 +90,27 @@ docker secret create svs_ssh_pubkey svs_key.pub
 rm svs_key svs_key.pub
 ```
 
-### 2. Build and distribute the image
+### 2. Get the image
 
-With a registry:
+A multi-arch image (`linux/amd64`, `linux/arm64`) is built and published to
+GitHub Container Registry by CI on every push to `main` and on version tags
+(see [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml)):
 
 ```sh
-docker build -t <registry>/swarm-volume-sync:latest .
-docker push <registry>/swarm-volume-sync:latest
-# then set image: in deploy/stack.yml accordingly
+docker pull ghcr.io/aamcatamney/swarm-volume-sync:latest
 ```
 
-Without a registry, `docker build -t swarm-volume-sync:latest .` on every node.
+Set `image: ghcr.io/aamcatamney/swarm-volume-sync:latest` in `deploy/stack.yml`.
+(If the GHCR package is private, `docker login ghcr.io` first, or make the
+package public in the repo's Packages settings so nodes can pull it freely.)
+
+Prefer to build locally instead?
+
+```sh
+docker build -t <registry>/swarm-volume-sync:latest . && docker push <registry>/swarm-volume-sync:latest
+# or, with no registry, build on every node:
+docker build -t swarm-volume-sync:latest .
+```
 
 ### 3. Deploy as a global service
 
