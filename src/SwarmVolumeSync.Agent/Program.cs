@@ -2,57 +2,41 @@ using SwarmVolumeSync.Agent;
 using SwarmVolumeSync.Core;
 
 var config = AgentConfig.FromEnvironment();
-var rsyncOptions = new RsyncOptions(config.SshKeyPath); // MirrorDelete stays off until #5 (pull-before-serve)
-var selector = VolumeSelector.For(config.SelectionMode, config.EnableLabelKey, config.IgnoreLabelKey);
-var discovery = new PeerDiscovery(config.TasksDnsName);
-var rsync = new RsyncRunner();
 
-using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
-AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
+var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(o => o.ListenAnyIP(config.ControlApiPort));
 
-Console.WriteLine($"swarm-volume-sync agent starting. service={config.ServiceName} " +
-                  $"mode={config.SelectionMode} enableLabel={config.EnableLabelKey} " +
-                  $"ignoreLabel={config.IgnoreLabelKey} poll={config.PollInterval.TotalSeconds}s");
+builder.Services.AddSingleton(config);
+builder.Services.AddSingleton<IVolumeMetadataStore>(new FileMetadataStore(config.MetadataDirectory));
+builder.Services.AddSingleton(new PeerDiscovery(config.TasksDnsName));
+builder.Services.AddSingleton(new RsyncRunner());
+builder.Services.AddHttpClient<PeerMetadataClient>();
+builder.Services.AddSingleton(sp => new PeerMetadataClient(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(PeerMetadataClient)),
+    config.ControlApiPort));
+builder.Services.AddHostedService<SyncWorker>();
 
-while (!cts.IsCancellationRequested)
+var app = builder.Build();
+
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+
+app.MapGet("/volumes", (IVolumeMetadataStore store) => Results.Ok(store.All()));
+
+app.MapGet("/volumes/{name}/version", (string name, IVolumeMetadataStore store) =>
 {
-    try
-    {
-        await using var docker = DockerFacts.Connect(config.DockerSocket);
+    var meta = store.TryGet(name);
+    return meta is null
+        ? Results.NotFound()
+        : Results.Ok(new { generation = meta.Version.Generation });
+});
 
-        var volumes = await docker.ListVolumesAsync(cts.Token);
-        var mounted = await docker.ListLocallyMountedVolumesAsync(cts.Token);
-        var peers = await discovery.DiscoverPushTargetsAsync();
+// Receives metadata propagated by the source after a successful data push.
+app.MapPost("/volumes/{name}/metadata", (string name, VolumeMetadata metadata, IVolumeMetadataStore store) =>
+{
+    if (metadata.VolumeName != name)
+        return Results.BadRequest("volume name mismatch");
+    store.Save(metadata);
+    return Results.Accepted();
+});
 
-        var candidates = volumes
-            .Where(VolumeScope.IsInScope)
-            .Where(selector.IsSelected)
-            .ToList();
-
-        var ops = PushPlanner.Plan(candidates, mounted, peers, rsyncOptions);
-
-        if (ops.Count > 0)
-            Console.WriteLine($"sourcing {ops.Select(o => o.VolumeName).Distinct().Count()} volume(s); " +
-                              $"{ops.Count} push(es) to {peers.Count} peer(s)");
-
-        foreach (var op in ops)
-        {
-            if (cts.IsCancellationRequested) break;
-            await rsync.RunAsync(op, cts.Token);
-        }
-    }
-    catch (OperationCanceledException)
-    {
-        break;
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"sync cycle error: {ex.Message}");
-    }
-
-    try { await Task.Delay(config.PollInterval, cts.Token); }
-    catch (OperationCanceledException) { break; }
-}
-
-Console.WriteLine("swarm-volume-sync agent stopped.");
+app.Run();

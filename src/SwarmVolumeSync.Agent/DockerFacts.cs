@@ -14,6 +14,12 @@ public sealed class DockerFacts(IDockerClient client) : IAsyncDisposable
     public static DockerFacts Connect(string socketUri) =>
         new(new DockerClientConfiguration(new Uri(socketUri)).CreateClient());
 
+    public async Task<string> GetNodeIdAsync(CancellationToken ct)
+    {
+        var info = await client.System.GetSystemInfoAsync(ct);
+        return string.IsNullOrEmpty(info.Swarm?.NodeID) ? Environment.MachineName : info.Swarm.NodeID;
+    }
+
     public async Task<IReadOnlyList<DockerVolume>> ListVolumesAsync(CancellationToken ct)
     {
         var response = await client.Volumes.ListAsync(ct);
