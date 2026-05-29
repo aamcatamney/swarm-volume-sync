@@ -3,7 +3,7 @@ using SwarmVolumeSync.Core;
 
 var config = AgentConfig.FromEnvironment();
 var rsyncOptions = new RsyncOptions(config.SshKeyPath); // MirrorDelete stays off until #5 (pull-before-serve)
-var selector = VolumeSelector.Labelled(config.EnableLabelKey);
+var selector = VolumeSelector.For(config.SelectionMode, config.EnableLabelKey, config.IgnoreLabelKey);
 var discovery = new PeerDiscovery(config.TasksDnsName);
 var rsync = new RsyncRunner();
 
@@ -12,7 +12,8 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
 
 Console.WriteLine($"swarm-volume-sync agent starting. service={config.ServiceName} " +
-                  $"enableLabel={config.EnableLabelKey} poll={config.PollInterval.TotalSeconds}s");
+                  $"mode={config.SelectionMode} enableLabel={config.EnableLabelKey} " +
+                  $"ignoreLabel={config.IgnoreLabelKey} poll={config.PollInterval.TotalSeconds}s");
 
 while (!cts.IsCancellationRequested)
 {

@@ -13,7 +13,10 @@ services:
     environment:
       # Must equal "<stack>_<service>" so tasks.<name> resolves the full mesh.
       SVS_SERVICE_NAME: svs_agent
+      # labelled (opt-in, default) | all
+      SVS_SYNC_MODE: labelled
       SVS_ENABLE_LABEL: swarm-volume-sync.enable
+      SVS_IGNORE_LABEL: swarm-volume-sync.ignore
       SVS_SSH_KEY_PATH: /root/.ssh/id_svs
       SVS_POLL_INTERVAL_SECONDS: "30"
     volumes:
