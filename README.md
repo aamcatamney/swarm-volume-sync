@@ -43,6 +43,62 @@ docker volume create --label swarm-volume-sync.enable=true appdata
 curl localhost:8080/status
 ```
 
+### Example stack (agent + your app, one file)
+
+A self-contained stack that runs the agent **and** an example app whose volume
+is replicated. Save as `stack.yml`, then `docker stack deploy -c stack.yml demo`:
+
+```yaml
+version: "3.8"
+
+services:
+  # The volume-sync agent: one per node (global), full-mesh replication.
+  svs-agent:
+    image: ghcr.io/aamcatamney/swarm-volume-sync:latest
+    deploy:
+      mode: global
+      restart_policy: { condition: any }
+    environment:
+      # MUST equal "<stack>_<service>" so tasks.<name> resolves the mesh.
+      SVS_SERVICE_NAME: demo_svs-agent
+      SVS_SYNC_MODE: labelled            # only volumes with the enable label
+      SVS_SSH_KEY_PATH: /root/.ssh/id_svs
+    ports:
+      - { target: 8080, published: 8080, mode: host } # control API per node
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+      - /var/lib/swarm-volume-sync:/var/lib/swarm-volume-sync
+    secrets: [svs_ssh_key, svs_ssh_pubkey]
+    networks: [svs]
+
+  # Your stateful app. Its volume carries the enable label, so it is replicated
+  # to every node — wherever Swarm reschedules this task, the data is already there.
+  app:
+    image: nginx:alpine
+    volumes:
+      - appdata:/usr/share/nginx/html
+    deploy:
+      replicas: 1
+    networks: [svs]
+
+volumes:
+  appdata:
+    labels:
+      swarm-volume-sync.enable: "true"   # opt this volume in
+
+networks:
+  svs:
+    driver: overlay
+
+secrets:                                  # created once: see step 1 above
+  svs_ssh_key:    { external: true }
+  svs_ssh_pubkey: { external: true }
+```
+
+> Remember the `SVS_SERVICE_NAME` rule: it must be `<stack>_<service>`. Deployed
+> as stack `demo` with service `svs-agent`, that is `demo_svs-agent`.
+
 > The GHCR package must be pullable by every node. If it is private, run
 > `docker login ghcr.io` on each node, or make the package public (repo →
 > Packages → package settings → visibility). For a full multi-node walkthrough

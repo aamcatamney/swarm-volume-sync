@@ -11,6 +11,11 @@ services:
       mode: global
       restart_policy:
         condition: any
+    ports:
+      # host mode: each node serves its own agent's control API on :8080
+      - target: 8080
+        published: 8080
+        mode: host
     environment:
       # Must equal "<stack>_<service>" so tasks.<name> resolves the full mesh.
       SVS_SERVICE_NAME: svs_agent
