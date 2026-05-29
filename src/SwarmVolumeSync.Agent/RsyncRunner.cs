@@ -1,15 +1,14 @@
 using System.Diagnostics;
-using SwarmVolumeSync.Core;
 
 namespace SwarmVolumeSync.Agent;
 
 /// <summary>
-/// Executes a planned <see cref="PushOperation"/> by shelling out to <c>rsync</c>.
-/// The C# agent decides what/where (Core); rsync does the byte transfer (ADR-0001).
+/// Executes an rsync transfer by shelling out to <c>rsync</c>. The C# agent
+/// decides what/where (Core); rsync does the byte transfer (ADR-0001).
 /// </summary>
 public sealed class RsyncRunner(string rsyncPath = "rsync")
 {
-    public async Task<bool> RunAsync(PushOperation op, CancellationToken ct)
+    public async Task<bool> RunAsync(string description, IReadOnlyList<string> args, CancellationToken ct)
     {
         var psi = new ProcessStartInfo
         {
@@ -18,7 +17,7 @@ public sealed class RsyncRunner(string rsyncPath = "rsync")
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
-        foreach (var arg in op.RsyncArgs)
+        foreach (var arg in args)
             psi.ArgumentList.Add(arg);
 
         using var process = new Process { StartInfo = psi };
@@ -28,8 +27,7 @@ public sealed class RsyncRunner(string rsyncPath = "rsync")
 
         if (process.ExitCode != 0)
         {
-            Console.Error.WriteLine(
-                $"rsync push of '{op.VolumeName}' to {op.PeerAddress} failed (exit {process.ExitCode}): {stderr.Trim()}");
+            Console.Error.WriteLine($"rsync {description} failed (exit {process.ExitCode}): {stderr.Trim()}");
             return false;
         }
 

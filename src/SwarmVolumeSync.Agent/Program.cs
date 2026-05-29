@@ -30,6 +30,12 @@ app.MapGet("/volumes/{name}/version", (string name, IVolumeMetadataStore store) 
         : Results.Ok(new { generation = meta.Version.Generation });
 });
 
+app.MapGet("/volumes/{name}", (string name, IVolumeMetadataStore store) =>
+{
+    var meta = store.TryGet(name);
+    return meta is null ? Results.NotFound() : Results.Ok(meta);
+});
+
 // Receives metadata propagated by the source after a successful data push.
 app.MapPost("/volumes/{name}/metadata", (string name, VolumeMetadata metadata, IVolumeMetadataStore store) =>
 {

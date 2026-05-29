@@ -37,4 +37,21 @@ public class RsyncPlanTests
 
         Assert.Contains("--delete", args);
     }
+
+    [Fact]
+    public void Pull_args_archive_peer_data_into_the_local_volume_over_ssh()
+    {
+        var args = RsyncPlan.PullArgs("appdata", "10.0.0.2", Opts with { MirrorDelete = true });
+
+        Assert.Equal(
+            new[]
+            {
+                "-a",
+                "--delete",
+                "-e", "ssh -i /run/secrets/svs_ssh_key -o StrictHostKeyChecking=no",
+                "10.0.0.2:/var/lib/docker/volumes/appdata/_data/",
+                "/var/lib/docker/volumes/appdata/_data/",
+            },
+            args);
+    }
 }

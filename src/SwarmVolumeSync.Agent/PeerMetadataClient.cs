@@ -30,6 +30,21 @@ public sealed class PeerMetadataClient(HttpClient http, int controlApiPort)
         }
     }
 
+    public async Task<VolumeMetadata?> GetMetadataAsync(string peer, string volume, CancellationToken ct)
+    {
+        try
+        {
+            var resp = await http.GetAsync(new Uri(Base(peer), $"/volumes/{volume}"), ct);
+            if (resp.StatusCode == HttpStatusCode.NotFound) return null;
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<VolumeMetadata>(ct);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
     public async Task PushMetadataAsync(string peer, VolumeMetadata metadata, CancellationToken ct)
     {
         try

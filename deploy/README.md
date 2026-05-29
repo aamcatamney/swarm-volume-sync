@@ -59,7 +59,8 @@ source detection, `tasks.` peer discovery, and rsync-over-SSH transport.
 
 - Best-effort, crash-consistent replication. **Do not replicate database
   volumes** — use native DB HA.
-- No versioning / pull-before-serve guard yet (#3, #5). Until #5 lands, a node
-  scheduled onto an empty volume could push emptiness; this tracer deliberately
-  does **not** use `rsync --delete`, which limits (not eliminates) the blast
-  radius. Do not run this in production before #5.
+- Versioning (#3) and the pull-before-serve guard (#5) are in place: a node
+  scheduled onto an empty volume hydrates from the highest-versioned peer before
+  it may push, and `rsync --delete` is only used by a confirmed source that has
+  won the version check (ADR-0003). Backfill of freshly-joined nodes (#8) and
+  the change-driven trigger (#4) may still be pending depending on your build.

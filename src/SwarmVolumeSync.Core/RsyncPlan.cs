@@ -19,6 +19,22 @@ public static class RsyncPlan
 
     public static IReadOnlyList<string> PushArgs(string volumeName, string peerAddress, RsyncOptions options)
     {
+        var dataPath = DataPath(volumeName);
+        return BuildArgs(options, source: dataPath, destination: $"{peerAddress}:{dataPath}");
+    }
+
+    /// <summary>
+    /// Pull (hydrate) args: copy a peer's volume data <em>into</em> this node's
+    /// volume. Used by pull-before-serve (ADR-0003) before a source may push.
+    /// </summary>
+    public static IReadOnlyList<string> PullArgs(string volumeName, string peerAddress, RsyncOptions options)
+    {
+        var dataPath = DataPath(volumeName);
+        return BuildArgs(options, source: $"{peerAddress}:{dataPath}", destination: dataPath);
+    }
+
+    private static List<string> BuildArgs(RsyncOptions options, string source, string destination)
+    {
         var args = new List<string> { "-a" };
 
         if (options.MirrorDelete)
@@ -27,9 +43,8 @@ public static class RsyncPlan
         args.Add("-e");
         args.Add($"ssh -i {options.SshKeyPath} -o StrictHostKeyChecking=no");
 
-        var dataPath = DataPath(volumeName);
-        args.Add(dataPath);
-        args.Add($"{peerAddress}:{dataPath}");
+        args.Add(source);
+        args.Add(destination);
 
         return args;
     }
