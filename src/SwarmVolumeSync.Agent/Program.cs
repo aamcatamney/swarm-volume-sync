@@ -27,11 +27,20 @@ app.MapGet("/volumes", (IVolumeMetadataStore store) => Results.Ok(store.All()));
 // Volumes this node currently sources, so peers can decide reclaim eligibility.
 app.MapGet("/sources", (SourceRegistry sources) => Results.Ok(sources.Current));
 
+// agentVersion is the software release (CONTEXT.md, Agent version), distinct
+// from each volume's data generation under `volumes`.
 app.MapGet("/status", async (MeshStatusService status, CancellationToken ct) =>
-    Results.Ok(await status.BuildAsync(ct)));
+    Results.Ok(new
+    {
+        agentVersion = BuildInfoReader.Current.Version,
+        commit = BuildInfoReader.Current.Commit,
+        volumes = await status.BuildAsync(ct),
+    }));
 
 app.MapGet("/metrics", async (MeshStatusService status, CancellationToken ct) =>
-    Results.Text(PrometheusFormatter.Format(await status.BuildAsync(ct)), "text/plain; version=0.0.4"));
+    Results.Text(
+        PrometheusFormatter.Format(await status.BuildAsync(ct), BuildInfoReader.Current),
+        "text/plain; version=0.0.4"));
 
 app.MapGet("/volumes/{name}/version", (string name, IVolumeMetadataStore store) =>
 {

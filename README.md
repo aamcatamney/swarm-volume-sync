@@ -180,12 +180,19 @@ rm svs_key svs_key.pub
 ### 2. Get the image
 
 A multi-arch image (`linux/amd64`, `linux/arm64`) is built and published to
-GitHub Container Registry by CI on every push to `main` and on version tags
-(see [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml)):
+GitHub Container Registry by CI. Every image-touching push to `main` cuts a
+[CalVer](docs/adr/0004-calver-and-auto-release-on-merge.md) release
+`YYYY.M.MICRO` (e.g. `2026.6.0`) with a matching GitHub Release, and pushes the
+tags `latest`, `2026.6.0`, `2026.6`, and `sha-<commit>` (see
+[`.github/workflows/release.yml`](.github/workflows/release.yml)):
 
 ```sh
-docker pull ghcr.io/aamcatamney/swarm-volume-sync:latest
+docker pull ghcr.io/aamcatamney/swarm-volume-sync:latest   # or pin :2026.6.0
 ```
+
+The running agent reports its release as `agentVersion` on `GET /status` and the
+`svs_build_info{version,commit}` Prometheus gauge — handy for watching a rolling
+deploy across nodes.
 
 Set `image: ghcr.io/aamcatamney/swarm-volume-sync:latest` in `deploy/stack.yml`.
 (If the GHCR package is private, `docker login ghcr.io` first, or make the
