@@ -8,7 +8,13 @@ COPY src/SwarmVolumeSync.Core/SwarmVolumeSync.Core.csproj src/SwarmVolumeSync.Co
 COPY src/SwarmVolumeSync.Agent/SwarmVolumeSync.Agent.csproj src/SwarmVolumeSync.Agent/
 RUN dotnet restore src/SwarmVolumeSync.Agent/SwarmVolumeSync.Agent.csproj
 COPY . .
-RUN dotnet publish src/SwarmVolumeSync.Agent/SwarmVolumeSync.Agent.csproj -c Release -o /app
+# Agent version (CONTEXT.md): CalVer minted in CI, baked in here. Dev builds
+# default to 0.0.0-dev. COMMIT is appended to AssemblyInformationalVersion as
+# +<sha>, which the agent splits back out at runtime.
+ARG VERSION=0.0.0-dev
+ARG COMMIT=dev
+RUN dotnet publish src/SwarmVolumeSync.Agent/SwarmVolumeSync.Agent.csproj -c Release -o /app \
+    -p:Version=${VERSION} -p:SourceRevisionId=${COMMIT}
 
 # --- runtime ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

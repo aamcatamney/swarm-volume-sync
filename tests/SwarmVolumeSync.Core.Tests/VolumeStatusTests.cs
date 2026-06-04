@@ -39,11 +39,21 @@ public class PrometheusFormatterTests
         var text = PrometheusFormatter.Format(
         [
             new VolumeStatus("appdata", Version: 5, Holders: 2, TotalNodes: 3, SyncLagSeconds: 12, LastSyncUnix: 1748520000),
-        ]);
+        ],
+        new BuildInfo("2026.6.0", "abc1234"));
 
         Assert.Contains("svs_volume_coverage{volume=\"appdata\"} 0.6666666666666666", text);
         Assert.Contains("svs_sync_lag_seconds{volume=\"appdata\"} 12", text);
         Assert.Contains("svs_last_sync_timestamp{volume=\"appdata\"} 1748520000", text);
         Assert.Contains("# TYPE svs_volume_coverage gauge", text);
+    }
+
+    [Fact]
+    public void Emits_build_info_gauge_carrying_the_agent_version()
+    {
+        var text = PrometheusFormatter.Format([], new BuildInfo("2026.6.0", "abc1234"));
+
+        Assert.Contains("# TYPE svs_build_info gauge", text);
+        Assert.Contains("svs_build_info{version=\"2026.6.0\",commit=\"abc1234\"} 1", text);
     }
 }

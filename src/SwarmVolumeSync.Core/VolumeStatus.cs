@@ -27,9 +27,15 @@ public sealed record VolumeStatus(
 /// </summary>
 public static class PrometheusFormatter
 {
-    public static string Format(IReadOnlyList<VolumeStatus> statuses)
+    public static string Format(IReadOnlyList<VolumeStatus> statuses, BuildInfo build)
     {
         var sb = new StringBuilder();
+
+        // Agent version (CONTEXT.md): info-style gauge, always 1; read the labels.
+        sb.Append("# HELP svs_build_info Running agent build (always 1; read the labels).\n");
+        sb.Append("# TYPE svs_build_info gauge\n");
+        sb.Append("svs_build_info{version=\"").Append(Escape(build.Version))
+          .Append("\",commit=\"").Append(Escape(build.Commit)).Append("\"} 1\n");
 
         Gauge(sb, "svs_volume_coverage", "Fraction of nodes holding a copy of the volume (1.0 = fully covered).",
             statuses, s => Num(s.Coverage));
@@ -52,4 +58,7 @@ public static class PrometheusFormatter
     }
 
     private static string Num(double d) => d.ToString("R", CultureInfo.InvariantCulture);
+
+    private static string Escape(string s) =>
+        s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n");
 }

@@ -76,6 +76,18 @@ the version of the data it holds. Versioning exists to defeat the
 empty-source-wipes-everyone failure: a node that becomes source with a *lower*
 version than the mesh must not push.
 
+### Agent version
+The **software release** of the agent itself — distinct from
+[Volume version](#volume-version) (per-volume *data* generation); the two must
+never be conflated. Calendar-versioned `YYYY.M.MICRO` (e.g. `2026.6.0`), minted
+at release time, baked into the image at build, and reported at runtime so a
+`global` rolling deploy can be observed mid-roll (which node runs which
+release). Surfaced as the `agentVersion` field on `GET /status` and the
+`svs_build_info{version,commit}` Prometheus gauge. Dev/local builds report
+`0.0.0-dev`. **Why "agent version", not "version":** `/status` already carries a
+per-volume version, so the bare word is ambiguous; the software release is
+always `agentVersion`.
+
 ### Pull-before-serve (hydrate)
 The rule that protects against stale/empty sources. When a node becomes source
 for a volume, **before pushing anything** it checks the mesh for a higher
