@@ -66,6 +66,23 @@ source detection, `tasks.` peer discovery, and rsync-over-SSH transport.
   retention-based reclaim + split-brain handling (#7), and backfill of
   freshly-joined nodes (#8) are all implemented.
 
+## Opting in an existing volume
+
+In the default `labelled` mode, only volumes carrying `swarm-volume-sync.enable=true`
+are replicated. Docker volume labels are **immutable**, so an already-populated
+volume cannot be opted in by relabelling it. Clone it into a new, labelled
+volume instead (run on the node that holds the data — the source is mounted
+read-only and left untouched):
+
+```sh
+./deploy/clone-volume.sh <source-volume> [dest-volume]   # dest defaults to <source>-svs
+```
+
+Then repoint the service/stack to the new volume. The agent tracks it within one
+poll interval (`curl localhost:47654/status`). Alternatively, switch the agent
+to `all` mode (`SVS_SYNC_MODE: all`) to replicate every named-local volume in
+place — except those carrying `swarm-volume-sync.ignore=true`.
+
 ## Observability
 
 - `GET :47654/status` — per-volume source, version, holders, sync lag, coverage.
