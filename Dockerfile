@@ -26,8 +26,8 @@ WORKDIR /app
 COPY --from=build /app ./
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
-# 22 = rsync-over-ssh transport; 8080 = control API (versions, status, metrics)
-EXPOSE 22 8080
+# 22 = rsync-over-ssh transport; 47654 = control API (versions, status, metrics)
+EXPOSE 22 47654
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -fsS http://localhost:8080/healthz || exit 1
+    CMD curl -fsS http://localhost:47654/healthz || exit 1
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

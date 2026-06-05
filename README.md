@@ -40,7 +40,7 @@ docker stack deploy -c stack.yml svs
 docker volume create --label swarm-volume-sync.enable=true appdata
 
 # 4. Check coverage from any node
-curl localhost:8080/status
+curl localhost:47654/status
 ```
 
 ### Example stack (agent + your app, one file)
@@ -64,7 +64,7 @@ services:
       SVS_SYNC_MODE: labelled            # only volumes with the enable label
       SVS_SSH_KEY_PATH: /root/.ssh/id_svs
     ports:
-      - { target: 8080, published: 8080, mode: host } # control API per node
+      - { target: 47654, published: 47654, mode: host } # control API per node
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/volumes:/var/lib/docker/volumes
@@ -241,7 +241,7 @@ All configuration is via environment variables (set in `deploy/stack.yml`):
 | `SVS_DOCKER_SOCKET` | `unix:///var/run/docker.sock` | Local Docker daemon |
 | `SVS_VOLUMES_ROOT` | `/var/lib/docker/volumes` | Where volume data lives on the host |
 | `SVS_METADATA_DIR` | `/var/lib/swarm-volume-sync` | Per-node version metadata (kept outside volumes) |
-| `SVS_CONTROL_API_PORT` | `8080` | HTTP control API / metrics port |
+| `SVS_CONTROL_API_PORT` | `47654` | HTTP control API / metrics port |
 | `SVS_DEBOUNCE_SECONDS` | `5` | Coalesce a burst of writes before syncing |
 | `SVS_SAFETY_POLL_SECONDS` | `300` | Safety-net poll catching missed change events |
 | `SVS_RETENTION_DAYS` | `7` | Reclaim an orphaned copy only after this long with no source in the mesh |
@@ -259,11 +259,11 @@ Each agent mounts (see `deploy/stack.yml`):
 
 ## Observability
 
-- `GET :8080/status` — per volume: source, version, holders + their versions,
+- `GET :47654/status` — per volume: source, version, holders + their versions,
   sync lag, coverage.
-- `GET :8080/metrics` — Prometheus gauges: `svs_volume_coverage`,
+- `GET :47654/metrics` — Prometheus gauges: `svs_volume_coverage`,
   `svs_sync_lag_seconds`, `svs_last_sync_timestamp`.
-- `GET :8080/healthz` — agent liveness (used by the container healthcheck).
+- `GET :47654/healthz` — agent liveness (used by the container healthcheck).
 - **WARN logs** name any under-replicated volume — your failover-risk early
   warning. Watch these before relying on HA.
 
@@ -288,7 +288,7 @@ mkdir -p deploy/secrets
 ssh-keygen -t ed25519 -N "" -f deploy/secrets/svs_ssh_key
 mv deploy/secrets/svs_ssh_key.pub deploy/secrets/svs_ssh_pubkey
 docker compose up --build
-# then: curl localhost:8080/status
+# then: curl localhost:47654/status
 ```
 
 Production deployment is always the Swarm stack (`deploy/stack.yml`), not Compose

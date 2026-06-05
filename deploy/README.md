@@ -68,8 +68,8 @@ source detection, `tasks.` peer discovery, and rsync-over-SSH transport.
 
 ## Observability
 
-- `GET :8080/status` — per-volume source, version, holders, sync lag, coverage.
-- `GET :8080/metrics` — Prometheus (`svs_volume_coverage`, `svs_sync_lag_seconds`,
+- `GET :47654/status` — per-volume source, version, holders, sync lag, coverage.
+- `GET :47654/metrics` — Prometheus (`svs_volume_coverage`, `svs_sync_lag_seconds`,
   `svs_last_sync_timestamp`).
 - WARN logs name any **under-replicated** volume (coverage < 100%) — your
   failover-risk early warning. Watch these before relying on HA.

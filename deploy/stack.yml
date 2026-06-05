@@ -12,9 +12,9 @@ services:
       restart_policy:
         condition: any
     ports:
-      # host mode: each node serves its own agent's control API on :8080
-      - target: 8080
-        published: 8080
+      # host mode: each node serves its own agent's control API on :47654
+      - target: 47654
+        published: 47654
         mode: host
     environment:
       # Must equal "<stack>_<service>" so tasks.<name> resolves the full mesh.
@@ -26,7 +26,7 @@ services:
       SVS_SSH_KEY_PATH: /root/.ssh/id_svs
       SVS_METADATA_DIR: /var/lib/swarm-volume-sync
       SVS_VOLUMES_ROOT: /var/lib/docker/volumes
-      SVS_CONTROL_API_PORT: "8080"
+      SVS_CONTROL_API_PORT: "47654"
       # change-driven: coalesce a burst of writes, then sync; safety-net catches missed events
       SVS_DEBOUNCE_SECONDS: "5"
       SVS_SAFETY_POLL_SECONDS: "300"
