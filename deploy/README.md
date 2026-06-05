@@ -27,7 +27,25 @@ docker push <registry>/swarm-volume-sync:latest
 Then set `image:` in `stack.yml` accordingly. (No registry? `docker build` on
 every node, keeping the `swarm-volume-sync:latest` tag.)
 
-## 3. Deploy as a global service
+## 3. Create the metadata directory on every node
+
+The agent bind-mounts a host path (`SVS_METADATA_DIR`, default
+`/var/lib/swarm-volume-sync`) to persist per-node version metadata **outside**
+the volumes root. Swarm validates bind-mount sources before a task starts and
+does **not** create them, so this directory must exist on every node first —
+including any node that later joins:
+
+```sh
+sudo mkdir -p /var/lib/swarm-volume-sync
+```
+
+Skip it on a node and the agent task there is rejected with
+`invalid mount config ... bind source path does not exist`, never runs, and that
+node is silently left uncovered — exactly the failover gap this service exists
+to close. (The Docker socket and volumes-root mounts already exist on every
+node, so only this one needs creating.)
+
+## 4. Deploy as a global service
 
 ```sh
 docker stack deploy -c deploy/stack.yml svs
@@ -36,7 +54,7 @@ docker stack deploy -c deploy/stack.yml svs
 If you change the stack name, update `SVS_SERVICE_NAME` to `<stack>_agent` so
 `tasks.<name>` resolves the full mesh.
 
-## 4. Verify the tracer (acceptance criteria)
+## 5. Verify the tracer (acceptance criteria)
 
 On node A:
 
