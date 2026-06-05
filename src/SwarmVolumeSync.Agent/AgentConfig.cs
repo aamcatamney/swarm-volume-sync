@@ -43,7 +43,7 @@ public sealed record AgentConfig(
             IgnoreLabelKey: Get("SVS_IGNORE_LABEL", "swarm-volume-sync.ignore"),
             MetadataDirectory: Get("SVS_METADATA_DIR", "/var/lib/swarm-volume-sync"),
             VolumesRoot: Get("SVS_VOLUMES_ROOT", "/var/lib/docker/volumes"),
-            ControlApiPort: int.TryParse(Get("SVS_CONTROL_API_PORT", "8080"), out var p) ? p : 8080,
+            ControlApiPort: int.TryParse(Get("SVS_CONTROL_API_PORT", "47654"), out var p) ? p : 47654,
             DebounceInterval: TimeSpan.FromSeconds(
                 int.TryParse(Get("SVS_DEBOUNCE_SECONDS", "5"), out var d) ? d : 5),
             SafetyPollInterval: TimeSpan.FromSeconds(

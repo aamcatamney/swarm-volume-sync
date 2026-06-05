@@ -16,16 +16,16 @@
 # 2. Run:
 #      docker compose up --build
 # 3. Try it:
-#      curl localhost:8080/healthz
+#      curl localhost:47654/healthz
 #      docker volume create --label swarm-volume-sync.enable=true appdata
-#      curl localhost:8080/status
+#      curl localhost:47654/status
 
 services:
   agent:
     build: .
     image: swarm-volume-sync:latest
     ports:
-      - "8080:8080" # control API: /healthz, /status, /metrics, /volumes
+      - "47654:47654" # control API: /healthz, /status, /metrics, /volumes
     environment:
       SVS_SERVICE_NAME: swarm-volume-sync # no overlay DNS locally => single-node, no peers
       SVS_SYNC_MODE: labelled
@@ -34,7 +34,7 @@ services:
       SVS_SSH_KEY_PATH: /root/.ssh/id_svs
       SVS_METADATA_DIR: /var/lib/swarm-volume-sync
       SVS_VOLUMES_ROOT: /var/lib/docker/volumes
-      SVS_CONTROL_API_PORT: "8080"
+      SVS_CONTROL_API_PORT: "47654"
       SVS_DEBOUNCE_SECONDS: "5"
       SVS_SAFETY_POLL_SECONDS: "300"
       SVS_RETENTION_DAYS: "7"
