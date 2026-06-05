@@ -26,22 +26,31 @@ Run on a swarm manager node:
 # 0. Have a swarm (skip if already initialised)
 docker swarm init
 
-# 1. Create the shared SSH keypair as swarm secrets
+# 1. Create the shared SSH keypair as swarm secrets (on the manager)
 ssh-keygen -t ed25519 -N "" -f svs_key
 docker secret create svs_ssh_key    svs_key
 docker secret create svs_ssh_pubkey svs_key.pub
 rm svs_key svs_key.pub
 
-# 2. Deploy the global service (pulls ghcr.io/aamcatamney/swarm-volume-sync:latest)
+# 2. Create the metadata dir on EVERY node (Swarm bind mounts won't auto-create it)
+sudo mkdir -p /var/lib/swarm-volume-sync
+
+# 3. Deploy the global service (pulls ghcr.io/aamcatamney/swarm-volume-sync:latest)
 curl -O https://raw.githubusercontent.com/aamcatamney/swarm-volume-sync/main/deploy/stack.yml
 docker stack deploy -c stack.yml svs
 
-# 3. Opt a volume in to replication
+# 4. Opt a volume in to replication
 docker volume create --label swarm-volume-sync.enable=true appdata
 
-# 4. Check coverage from any node
+# 5. Check coverage from any node
 curl localhost:47654/status
 ```
+
+> **Run step 2 on every node**, and on any node that later joins the swarm.
+> Swarm validates bind-mount sources before a task starts and does **not**
+> create them, so an agent on a node missing `/var/lib/swarm-volume-sync` is
+> rejected with `bind source path does not exist` and never runs there —
+> silently leaving that node uncovered. (Steps 1 and 3 run on a manager only.)
 
 ### Example stack (agent + your app, one file)
 
